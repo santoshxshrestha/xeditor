@@ -1,11 +1,13 @@
+use iced::Alignment;
 use iced::Element;
 use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::task::Task;
 use iced::widget::container;
-use iced::widget::row;
 use iced::widget::text;
 use iced::widget::text_editor;
+use iced::widget::text_editor::Position;
+use iced::widget::{column, row};
 use std::io::ErrorKind;
 use std::path::Path;
 use std::sync::Arc;
@@ -68,7 +70,15 @@ impl Xeditor {
 
         let tree_area = text("File Tree Area").height(Fill).width(FillPortion(1));
 
-        container(row![tree_area, editor_container])
+        let position = {
+            let Position { line, column } = self.content.cursor().position;
+            text(format!("Ln {}, Col {}", line + 1, column + 1))
+                .width(FillPortion(1))
+                .size(16)
+                .align_x(Alignment::End)
+        };
+
+        container(row![tree_area, column![editor_container, position]])
             .padding(10)
             .center(Fill)
             .into()
