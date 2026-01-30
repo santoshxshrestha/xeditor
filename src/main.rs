@@ -1,4 +1,7 @@
 #![allow(unused)]
+use iced::Length::Fill;
+use iced::Length::FillPortion;
+use iced::widget::container;
 use iced::Element;
 use iced::task::Task;
 use iced::Theme;
@@ -37,10 +40,12 @@ impl Xeditor {
     }
 
     fn view(&self)-> Element<'_ , Message>{
-        text_editor(&self.content)
+        let editor_area = text_editor(&self.content)
             .placeholder("Type some thing bruth")
-            .on_action(Message::ActionPerformed)
-            .into()
+            .height(Fill)
+            .on_action(Message::ActionPerformed);
+
+        container(editor_area).padding(10).center(Fill).into()
     }
 }
 
