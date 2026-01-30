@@ -1,4 +1,5 @@
 #![allow(unused)]
+use iced::widget::{column, row};
 use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::widget::container;
@@ -26,7 +27,7 @@ enum Message {
 impl Xeditor {
     fn new() -> Self {
         Self{
-            content: text_editor::Content::new(),
+            content: text_editor::Content::with_text(include_str!("./main.rs")),
         }
     }
 
@@ -45,7 +46,13 @@ impl Xeditor {
             .height(Fill)
             .on_action(Message::ActionPerformed);
 
-        container(editor_area).padding(10).center(Fill).into()
+        let editor_container = container(editor_area).width(FillPortion(9));
+
+        let tree_area = text("File Tree Area")
+            .height(Fill)
+            .width(FillPortion(1));
+
+        container(row![tree_area, editor_container]).padding(10).center(Fill).into()
     }
 }
 
