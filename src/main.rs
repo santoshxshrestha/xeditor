@@ -6,7 +6,9 @@ use std::path::PathBuf;
 use iced::widget::text_editor;
 use iced::widget::text;
 
-struct Xeditor;
+struct Xeditor{
+    content: text_editor::Content,
+}
 
 
 #[derive(Debug, Clone)]
@@ -20,17 +22,25 @@ enum Message {
 
 impl Xeditor {
     fn new() -> Self {
-        Self
+        Self{
+            content: text_editor::Content::new(),
+        }
     }
 
     fn update(&mut self, message: Message) {
         match message {
-            _=> println!("Matched some thing")
+            Message::ActionPerformed(content) => {
+                self.content.perform(content);
+            }
+            _ => println!("Not implemented yet"),
         }
     }
 
     fn view(&self)-> Element<'_ , Message>{
-        text("Hello, iced").into()
+        text_editor(&self.content)
+            .placeholder("Type some thing bruth")
+            .on_action(Message::ActionPerformed)
+            .into()
     }
 }
 
