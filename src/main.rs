@@ -30,7 +30,7 @@ impl Xeditor {
     fn new() -> (Self, Task<Message>) {
         (
             Self {
-                content: text_editor::Content::with_text(include_str!("./main.rs")),
+                content: text_editor::Content::new(),
             },
             Task::perform(
                 read_file(format!(
