@@ -1,17 +1,13 @@
 #![allow(unused)]
+use iced::Element;
 use iced::task::Task;
 use iced::Theme;
 use std::path::PathBuf;
 use iced::widget::text_editor;
 use iced::widget::text;
 
-struct Xeditor{
-    directory: Option<PathBuf>,
-    file: Option<PathBuf>,
-    theme: Theme,
-    content: text_editor::Content,
-    is_loading: bool,
-}
+struct Xeditor;
+
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -24,26 +20,22 @@ enum Message {
 
 impl Xeditor {
     fn new() -> Self {
-        Self {
-            directory: None,
-            file: None,
-            theme: Theme::CatppuccinMocha,
-            content: text_editor::Content::new(),
-            is_loading: false,
-        }
+        Self
     }
+
     fn update(&mut self, message: Message) {
         match message {
-            _ => println!("Did some update")
+            _=> println!("Matched some thing")
         }
     }
-    fn view(self){
-        println!("This is the view")
+
+    fn view(&self)-> Element<'_ , Message>{
+        text("Hello, iced").into()
     }
 }
 
 
 
-fn main() {
-    println!("Hello iced");
+fn main()-> iced::Result {
+    iced::application(Xeditor::new, Xeditor::update, Xeditor::view).run()
 }
