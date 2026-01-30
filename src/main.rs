@@ -15,6 +15,7 @@ use tokio::fs;
 
 struct Xeditor {
     content: text_editor::Content,
+    error: Option<ErrorKind>,
 }
 
 #[allow(unused)]
@@ -33,6 +34,7 @@ impl Xeditor {
         (
             Self {
                 content: text_editor::Content::new(),
+                error: None,
             },
             Task::perform(
                 read_file(format!(
@@ -49,11 +51,16 @@ impl Xeditor {
             Message::ActionPerformed(content) => {
                 self.content.perform(content);
             }
-            Message::OpenedFile(content) => {
-                if let Ok(file_content) = content {
-                    self.content = text_editor::Content::with_text(&file_content);
+
+            Message::OpenedFile(content) => match content {
+                Ok(content) => {
+                    self.content = text_editor::Content::with_text(&content);
                 }
-            }
+                Err(e) => {
+                    self.error = Some(e);
+                }
+            },
+
             _ => println!("Not implemented yet"),
         }
 
