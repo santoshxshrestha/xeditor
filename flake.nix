@@ -45,8 +45,6 @@
         ];
         nativeBuildInputs = [ pkgs.pkg-config ];
 
-        # env.RUST_SRC_PATH =
-        #   "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         env.RUSTFLAGS = "-C link-arg=-Wl,-rpath,${nixpkgs.lib.makeLibraryPath runtimedeps}";
       };
       formatter = pkgs.rustfmt;
