@@ -1,9 +1,15 @@
 #![allow(unused)]
 use iced::Alignment;
+use iced::Border;
+use iced::Color;
 use iced::Element;
 use iced::Length::Fill;
 use iced::Length::FillPortion;
+use iced::border;
+use iced::border::color;
 use iced::task::Task;
+use iced::theme;
+use iced::theme::Base;
 use iced::theme::Theme;
 use iced::widget::button;
 use iced::widget::container;
@@ -77,6 +83,16 @@ impl Xeditor {
     }
 
     fn view(&self) -> Element<'_, Message> {
+        let border = Border {
+            width: 1.0,
+            color: Color::from_rgb8(69, 71, 90),
+            radius: border::Radius {
+                top_left: 5.0,
+                top_right: 5.0,
+                bottom_right: 5.0,
+                bottom_left: 5.0,
+            },
+        };
         let open_button = button("Open File")
             .on_press(Message::OpenFile)
             .height(30)
@@ -96,7 +112,47 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        let tree_area = text("File Tree Area").height(Fill).width(FillPortion(1));
+        let parent_directory = match &self.path {
+            Some(path) => path.parent().unwrap(),
+            None => Path::new(""),
+        };
+
+        let entries = match parent_directory.read_dir() {
+            Ok(entries) => entries,
+            Err(_) => return text("Could not read directory").into(),
+        };
+
+        let tree_content = entries
+            .filter_map(|entry| entry.ok())
+            .map(|entry| {
+                let file_name = entry.file_name().into_string().unwrap_or_default();
+                if entry.path().is_dir() {
+                    format!("📁 {}/", file_name)
+                } else {
+                    format!("📄 {}", file_name)
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let tree_area = container(column![
+            text(parent_directory.to_string_lossy().to_string()),
+            text(tree_content)
+        ])
+        .width(FillPortion(1))
+        .padding(10)
+        .height(Fill)
+        .style(move |theme| container::Style {
+            text_color: Some(Color::WHITE),
+            background: Some(Theme::CatppuccinMocha.base().background_color.into()),
+            border: border,
+            shadow: iced::Shadow {
+                color: Color::from_rgb8(30, 32, 48),
+                offset: iced::Vector { x: 0.5, y: 1.0 },
+                blur_radius: 3.0,
+            },
+            snap: false,
+        });
 
         let position = {
             let Position { line, column } = self.content.cursor().position;
@@ -112,6 +168,17 @@ impl Xeditor {
         ])
         .padding(10)
         .center(Fill)
+        .style(move |theme| container::Style {
+            text_color: Some(Color::WHITE),
+            background: Some(Theme::CatppuccinMocha.base().background_color.into()),
+            border: border,
+            shadow: iced::Shadow {
+                color: Color::from_rgb8(30, 32, 48),
+                offset: iced::Vector { x: 0.5, y: 1.0 },
+                blur_radius: 3.0,
+            },
+            snap: false,
+        })
         .into()
     }
 }
