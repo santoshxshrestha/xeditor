@@ -126,15 +126,6 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        let status = if let Some(Error::IoError(error)) = self.error {
-            text(error.to_string())
-        } else {
-            match self.path.as_deref().and_then(Path::to_str) {
-                Some(path) => text(path).size(14),
-                None => text("New File"),
-            }
-        };
-
         // TODO: Need to parse the the path and then get the name of the file and directory and
         // read recursively
         let tree_area = container(column![text("file_name")])
@@ -153,15 +144,25 @@ impl Xeditor {
                 snap: false,
             });
 
-        let position = {
-            let Position { line, column } = self.content.cursor().position;
-            text(format!("Ln {}, Col {}", line + 1, column + 1))
-                .width(FillPortion(1))
-                .size(16)
-                .align_x(Alignment::End)
-        };
+        let status_bar = {
+            let status = if let Some(Error::IoError(error)) = self.error {
+                text(error.to_string())
+            } else {
+                match self.path.as_deref().and_then(Path::to_str) {
+                    Some(path) => text(path).size(14),
+                    None => text("New File"),
+                }
+            };
 
-        let status_bar = row![status, position];
+            let position = {
+                let Position { line, column } = self.content.cursor().position;
+                text(format!("Ln {}, Col {}", line + 1, column + 1))
+                    .width(FillPortion(1))
+                    .size(16)
+                    .align_x(Alignment::End)
+            };
+            row![status, position]
+        };
 
         container(row![
             tree_area,
