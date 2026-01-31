@@ -2,8 +2,10 @@ use iced::Alignment;
 use iced::Border;
 use iced::Color;
 use iced::Element;
+use iced::Font;
 use iced::Length::Fill;
 use iced::Length::FillPortion;
+use iced::Settings;
 use iced::border;
 use iced::task::Task;
 use iced::theme::Base;
@@ -113,22 +115,15 @@ impl Xeditor {
                 bottom_left: 5.0,
             },
         };
-        let open_button = button("Open File")
-            .on_press(Message::OpenFile)
-            .height(30)
-            .width(100);
+        let open_button = button(open_icon()).on_press(Message::OpenFile);
 
-        let save_button = button("Save File")
-            .on_press(Message::SaveFile)
-            .height(30)
-            .width(100);
+        let save_button = button(save_icon()).on_press(Message::SaveFile);
 
-        let new_file_button = button("Nex File")
-            .on_press(Message::NewFile)
-            .height(30)
-            .width(100);
+        let new_file_button = button(new_icon()).on_press(Message::NewFile);
 
         let controls = row![open_button, save_button, new_file_button]
+            .height(30)
+            .width(100)
             .padding(10)
             .spacing(10);
 
@@ -198,8 +193,29 @@ impl Xeditor {
     }
 }
 
+fn new_icon<'a>() -> Element<'a, Message> {
+    icon('\u{E800}')
+}
+
+fn save_icon<'a>() -> Element<'a, Message> {
+    icon('\u{E801}')
+}
+
+fn open_icon<'a>() -> Element<'a, Message> {
+    icon('\u{F115}')
+}
+
+fn icon<'a>(codepoint: char) -> Element<'a, Message> {
+    const ICON_FONTS: Font = Font::with_name("xeditor-icons");
+    text(codepoint).font(ICON_FONTS).into()
+}
+
 fn main() -> iced::Result {
     iced::application(Xeditor::new, Xeditor::update, Xeditor::view)
+        .settings(Settings {
+            fonts: vec![include_bytes!("../fonts/xeditor.ttf").as_slice().into()],
+            ..Settings::default()
+        })
         .theme(Theme::CatppuccinMocha)
         .run()
 }
