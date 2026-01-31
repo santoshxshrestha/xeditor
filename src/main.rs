@@ -76,6 +76,12 @@ impl Xeditor {
             },
             Message::OpenFile => Task::perform(pick_file(), Message::OpenedFile),
 
+            Message::NewFile => {
+                self.content = text_editor::Content::new();
+                self.path = None;
+                Task::none()
+            }
+
             _ => {
                 println!("Not implemented yet");
                 Task::none()
@@ -104,7 +110,14 @@ impl Xeditor {
             .height(30)
             .width(100);
 
-        let controls = row![open_button, save_button].padding(10).spacing(10);
+        let new_file_button = button("Nex File")
+            .on_press(Message::NewFile)
+            .height(30)
+            .width(100);
+
+        let controls = row![open_button, save_button, new_file_button]
+            .padding(10)
+            .spacing(10);
 
         let editor_area = text_editor(&self.content)
             .placeholder("Type some thing bruth")
@@ -113,30 +126,18 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        let parent_directory = match &self.path {
-            Some(path) => path.parent().unwrap(),
-            None => Path::new(""),
+        let status = if let Some(Error::IoError(error)) = self.error {
+            text(error.to_string())
+        } else {
+            match self.path.as_deref().and_then(Path::to_str) {
+                Some(path) => text(path).size(14),
+                None => text("New File"),
+            }
         };
 
-        let entries = match parent_directory.read_dir() {
-            Ok(entries) => entries,
-            Err(_) => return text("Could not read directory").into(),
-        };
-
-        let tree_content = entries
-            .filter_map(|entry| entry.ok())
-            .map(|entry| {
-                let file_name = entry.file_name().into_string().unwrap_or_default();
-                if entry.path().is_dir() {
-                    format!(" {}/", file_name)
-                } else {
-                    format!(" {}", file_name)
-                }
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        let tree_area = container(column![text(tree_content)])
+        // TODO: Need to parse the the path and then get the name of the file and directory and
+        // read recursively
+        let tree_area = container(column![text("file_name")])
             .width(FillPortion(1))
             .padding(10)
             .height(Fill)
@@ -160,14 +161,11 @@ impl Xeditor {
                 .align_x(Alignment::End)
         };
 
-        let bottom_bar = row![
-            text(parent_directory.to_string_lossy().to_string()).align_x(Alignment::Start),
-            position
-        ];
+        let status_bar = row![status, position];
 
         container(row![
             tree_area,
-            column![controls, editor_container, bottom_bar]
+            column![controls, editor_container, status_bar]
         ])
         .padding(10)
         .center(Fill)
