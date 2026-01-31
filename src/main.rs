@@ -1,4 +1,3 @@
-#![allow(unused)]
 use iced::Alignment;
 use iced::Border;
 use iced::Color;
@@ -6,9 +5,7 @@ use iced::Element;
 use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::border;
-use iced::border::color;
 use iced::task::Task;
-use iced::theme;
 use iced::theme::Base;
 use iced::theme::Theme;
 use iced::widget::button;
@@ -39,7 +36,7 @@ enum Message {
     NewFile,
     OpenDirectory,
     SaveFile,
-    SavedFile(Result<(), Error>),
+    SavedFile(Result<PathBuf, Error>),
 }
 
 impl Xeditor {
@@ -59,6 +56,8 @@ impl Xeditor {
             Message::ActionPerformed(content) => {
                 self.content.perform(content);
 
+                self.error = None;
+
                 Task::none()
             }
 
@@ -75,6 +74,20 @@ impl Xeditor {
                 }
             },
             Message::OpenFile => Task::perform(pick_file(), Message::OpenedFile),
+
+            Message::SaveFile => {
+                let text = self.content.text();
+                Task::perform(save_file(self.path.clone(), text), Message::SavedFile)
+            }
+
+            Message::SavedFile(Ok(path)) => {
+                self.path = Some(path);
+                Task::none()
+            }
+            Message::SavedFile(Err(error)) => {
+                self.error = Some(error);
+                Task::none()
+            }
 
             Message::NewFile => {
                 self.content = text_editor::Content::new();
@@ -132,7 +145,7 @@ impl Xeditor {
             .width(FillPortion(1))
             .padding(10)
             .height(Fill)
-            .style(move |theme| container::Style {
+            .style(move |_theme| container::Style {
                 text_color: Some(Color::WHITE),
                 background: Some(Theme::CatppuccinMocha.base().background_color.into()),
                 border: border,
@@ -170,7 +183,7 @@ impl Xeditor {
         ])
         .padding(10)
         .center(Fill)
-        .style(move |theme| container::Style {
+        .style(move |_theme| container::Style {
             text_color: Some(Color::WHITE),
             background: Some(Theme::CatppuccinMocha.base().background_color.into()),
             border: border,
@@ -222,4 +235,23 @@ fn default_file() -> PathBuf {
         "{}/src/main.rs",
         std::env::var("CARGO_MANIFEST_DIR").unwrap()
     ))
+}
+
+async fn save_file(path: Option<PathBuf>, text: String) -> Result<PathBuf, Error> {
+    let path = if let Some(path) = path {
+        path
+    } else {
+        rfd::AsyncFileDialog::new()
+            .set_title("Choose a file name...")
+            .save_file()
+            .await
+            .ok_or(Error::DialogClosed)
+            .map(|handle| handle.path().to_owned())?
+    };
+
+    fs::write(&path, text)
+        .await
+        .map_err(|error| Error::IoError(error.kind()))?;
+
+    Ok(path)
 }
