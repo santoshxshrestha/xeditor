@@ -15,6 +15,7 @@ use iced::widget::container;
 use iced::widget::text;
 use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
+use iced::widget::tooltip;
 use iced::widget::{column, row};
 use rfd;
 use std::io::ErrorKind;
@@ -115,11 +116,23 @@ impl Xeditor {
                 bottom_left: 5.0,
             },
         };
-        let open_button = button(open_icon()).on_press(Message::OpenFile);
+        let open_button = tooltip(
+            button(open_icon()).on_press(Message::OpenFile),
+            "open a file",
+            tooltip::Position::Bottom,
+        );
 
-        let save_button = button(save_icon()).on_press(Message::SaveFile);
+        let save_button = tooltip(
+            button(save_icon()).on_press(Message::SaveFile),
+            "save the changed content",
+            tooltip::Position::Bottom,
+        );
 
-        let new_file_button = button(new_icon()).on_press(Message::NewFile);
+        let new_file_button = tooltip(
+            button(new_icon()).on_press(Message::NewFile),
+            "new file",
+            tooltip::Position::Bottom,
+        );
 
         let controls = row![open_button, save_button, new_file_button]
             .height(30)
@@ -213,6 +226,7 @@ fn icon<'a>(codepoint: char) -> Element<'a, Message> {
 fn main() -> iced::Result {
     iced::application(Xeditor::new, Xeditor::update, Xeditor::view)
         .settings(Settings {
+            default_font: Font::MONOSPACE,
             fonts: vec![include_bytes!("../fonts/xeditor.ttf").as_slice().into()],
             ..Settings::default()
         })
