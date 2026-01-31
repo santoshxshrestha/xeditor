@@ -136,24 +136,21 @@ impl Xeditor {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let tree_area = container(column![
-            text(parent_directory.to_string_lossy().to_string()),
-            text(tree_content)
-        ])
-        .width(FillPortion(1))
-        .padding(10)
-        .height(Fill)
-        .style(move |theme| container::Style {
-            text_color: Some(Color::WHITE),
-            background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-            border: border,
-            shadow: iced::Shadow {
-                color: Color::from_rgb8(30, 32, 48),
-                offset: iced::Vector { x: 0.5, y: 1.0 },
-                blur_radius: 3.0,
-            },
-            snap: false,
-        });
+        let tree_area = container(column![text(tree_content)])
+            .width(FillPortion(1))
+            .padding(10)
+            .height(Fill)
+            .style(move |theme| container::Style {
+                text_color: Some(Color::WHITE),
+                background: Some(Theme::CatppuccinMocha.base().background_color.into()),
+                border: border,
+                shadow: iced::Shadow {
+                    color: Color::from_rgb8(30, 32, 48),
+                    offset: iced::Vector { x: 0.5, y: 1.0 },
+                    blur_radius: 3.0,
+                },
+                snap: false,
+            });
 
         let position = {
             let Position { line, column } = self.content.cursor().position;
@@ -163,9 +160,14 @@ impl Xeditor {
                 .align_x(Alignment::End)
         };
 
+        let bottom_bar = row![
+            text(parent_directory.to_string_lossy().to_string()).align_x(Alignment::Start),
+            position
+        ];
+
         container(row![
             tree_area,
-            column![controls, editor_container, position]
+            column![controls, editor_container, bottom_bar]
         ])
         .padding(10)
         .center(Fill)
