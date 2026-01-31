@@ -4,6 +4,7 @@ use iced::Element;
 use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::task::Task;
+use iced::theme::Theme;
 use iced::widget::button;
 use iced::widget::container;
 use iced::widget::text;
@@ -13,12 +14,14 @@ use iced::widget::{column, row};
 use rfd;
 use std::io::ErrorKind;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 
 struct Xeditor {
     content: text_editor::Content,
     error: Option<Error>,
+    path: Option<PathBuf>,
 }
 
 #[allow(unused)]
@@ -26,7 +29,7 @@ struct Xeditor {
 enum Message {
     ActionPerformed(text_editor::Action),
     OpenFile,
-    OpenedFile(Result<Arc<String>, Error>),
+    OpenedFile(Result<(Arc<String>, PathBuf), Error>),
     NewFile,
     OpenDirectory,
     SaveFile,
@@ -38,14 +41,9 @@ impl Xeditor {
             Self {
                 content: text_editor::Content::new(),
                 error: None,
+                path: None,
             },
-            Task::perform(
-                read_file(format!(
-                    "{}/src/main.rs",
-                    std::env::var("CARGO_MANIFEST_DIR").unwrap()
-                )),
-                Message::OpenedFile,
-            ),
+            Task::perform(read_file(default_file()), Message::OpenedFile),
         )
     }
 
@@ -59,7 +57,8 @@ impl Xeditor {
 
             Message::OpenedFile(content) => match content {
                 Ok(content) => {
-                    self.content = text_editor::Content::with_text(&content);
+                    self.content = text_editor::Content::with_text(&content.0);
+                    self.path = Some(content.1);
 
                     Task::none()
                 }
@@ -78,7 +77,18 @@ impl Xeditor {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let controls = row![button("Open").on_press(Message::OpenFile)];
+        let open_button = button("Open File")
+            .on_press(Message::OpenFile)
+            .height(30)
+            .width(100);
+
+        let save_button = button("Save File")
+            .on_press(Message::SaveFile)
+            .height(30)
+            .width(100);
+
+        let controls = row![open_button, save_button].padding(10).spacing(10);
+
         let editor_area = text_editor(&self.content)
             .placeholder("Type some thing bruth")
             .height(Fill)
@@ -107,15 +117,9 @@ impl Xeditor {
 }
 
 fn main() -> iced::Result {
-    iced::application(Xeditor::new, Xeditor::update, Xeditor::view).run()
-}
-
-async fn read_file(path: impl AsRef<Path>) -> Result<Arc<String>, Error> {
-    fs::read_to_string(path)
-        .await
-        .map(Arc::new)
-        .map_err(|error| error.kind())
-        .map_err(Error::IoError)
+    iced::application(Xeditor::new, Xeditor::update, Xeditor::view)
+        .theme(Theme::CatppuccinMocha)
+        .run()
 }
 
 #[derive(Debug, Clone)]
@@ -124,12 +128,29 @@ enum Error {
     IoError(ErrorKind),
 }
 
-async fn pick_file() -> Result<Arc<String>, Error> {
+async fn read_file(path: PathBuf) -> Result<(Arc<String>, PathBuf), Error> {
+    let contents = fs::read_to_string(&path)
+        .await
+        .map(Arc::new)
+        .map_err(|error| error.kind())
+        .map_err(Error::IoError)?;
+
+    Ok((contents, path))
+}
+
+async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
     let path = rfd::AsyncFileDialog::new()
         .set_title("Choose a file")
         .pick_file()
         .await
         .ok_or(Error::DialogClosed)?;
 
-    read_file(path.path()).await
+    read_file(path.path().to_owned()).await
+}
+
+fn default_file() -> PathBuf {
+    PathBuf::from(format!(
+        "{}/src/main.rs",
+        std::env::var("CARGO_MANIFEST_DIR").unwrap()
+    ))
 }
