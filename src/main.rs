@@ -39,6 +39,7 @@ enum Message {
     NewFile,
     OpenDirectory,
     SaveFile,
+    SavedFile(Result<(), Error>),
 }
 
 impl Xeditor {
@@ -127,9 +128,9 @@ impl Xeditor {
             .map(|entry| {
                 let file_name = entry.file_name().into_string().unwrap_or_default();
                 if entry.path().is_dir() {
-                    format!("📁 {}/", file_name)
+                    format!(" {}/", file_name)
                 } else {
-                    format!("📄 {}", file_name)
+                    format!(" {}", file_name)
                 }
             })
             .collect::<Vec<String>>()
