@@ -1,3 +1,4 @@
+#![allow(unused)]
 use iced::Alignment;
 use iced::Border;
 use iced::Color;
@@ -7,9 +8,11 @@ use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::Settings;
 use iced::border;
+use iced::highlighter::{self, Highlighter};
 use iced::task::Task;
 use iced::theme::Base;
 use iced::theme::Theme;
+use iced::widget::Tooltip;
 use iced::widget::button;
 use iced::widget::container;
 use iced::widget::text;
@@ -116,23 +119,9 @@ impl Xeditor {
                 bottom_left: 5.0,
             },
         };
-        let open_button = tooltip(
-            button(open_icon()).on_press(Message::OpenFile),
-            "open a file",
-            tooltip::Position::Bottom,
-        );
-
-        let save_button = tooltip(
-            button(save_icon()).on_press(Message::SaveFile),
-            "save the changed content",
-            tooltip::Position::Bottom,
-        );
-
-        let new_file_button = tooltip(
-            button(new_icon()).on_press(Message::NewFile),
-            "new file",
-            tooltip::Position::Bottom,
-        );
+        let open_button = create_button("open a file", Message::OpenFile, open_icon());
+        let save_button = create_button("save file", Message::SaveFile, save_icon());
+        let new_file_button = create_button("Create new file", Message::NewFile, new_icon());
 
         let controls = row![open_button, save_button, new_file_button]
             .height(30)
@@ -143,7 +132,15 @@ impl Xeditor {
         let editor_area = text_editor(&self.content)
             .placeholder("Type some thing bruth")
             .height(Fill)
-            .on_action(Message::ActionPerformed);
+            .on_action(Message::ActionPerformed)
+            .highlight(
+                self.path
+                    .as_ref()
+                    .and_then(|path| path.extension())
+                    .and_then(|ext| ext.to_str())
+                    .unwrap_or("rs"),
+                highlighter::Theme::SolarizedDark,
+            );
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
@@ -204,6 +201,18 @@ impl Xeditor {
         })
         .into()
     }
+}
+
+fn create_button<'a>(
+    tip: &'a str,
+    message: Message,
+    icon: Element<'a, Message>,
+) -> Tooltip<'a, Message> {
+    tooltip(
+        button(icon).on_press(message),
+        tip,
+        tooltip::Position::Bottom,
+    )
 }
 
 fn new_icon<'a>() -> Element<'a, Message> {
