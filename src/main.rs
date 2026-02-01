@@ -8,6 +8,7 @@ use iced::Length::FillPortion;
 use iced::Settings;
 use iced::border;
 use iced::highlighter;
+use iced::keyboard;
 use iced::task::Task;
 use iced::theme::Base;
 use iced::theme::Theme;
@@ -151,7 +152,13 @@ impl Xeditor {
                     .and_then(|ext| ext.to_str())
                     .unwrap_or("rs"),
                 highlighter::Theme::Base16Mocha,
-            );
+            )
+            .key_binding(|key_press| match key_press.key.as_ref() {
+                keyboard::Key::Character("s") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::SaveFile))
+                }
+                _ => text_editor::Binding::from_key_press(key_press),
+            });
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
