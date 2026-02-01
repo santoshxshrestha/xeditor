@@ -1,4 +1,3 @@
-#![allow(unused)]
 use iced::Alignment;
 use iced::Border;
 use iced::Color;
@@ -8,7 +7,7 @@ use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::Settings;
 use iced::border;
-use iced::highlighter::{self, Highlighter};
+use iced::highlighter;
 use iced::task::Task;
 use iced::theme::Base;
 use iced::theme::Theme;
@@ -31,6 +30,7 @@ struct Xeditor {
     content: text_editor::Content,
     error: Option<Error>,
     path: Option<PathBuf>,
+    is_dirty: bool,
 }
 
 #[allow(unused)]
@@ -52,6 +52,7 @@ impl Xeditor {
                 content: text_editor::Content::new(),
                 error: None,
                 path: None,
+                is_dirty: true,
             },
             Task::perform(read_file(default_file()), Message::OpenedFile),
         )
@@ -60,9 +61,11 @@ impl Xeditor {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ActionPerformed(content) => {
-                self.content.perform(content);
+                self.is_dirty = self.is_dirty || content.is_edit();
 
                 self.error = None;
+
+                self.content.perform(content);
 
                 Task::none()
             }
@@ -71,6 +74,7 @@ impl Xeditor {
                 Ok(content) => {
                     self.content = text_editor::Content::with_text(&content.0);
                     self.path = Some(content.1);
+                    self.is_dirty = false;
 
                     Task::none()
                 }
@@ -88,6 +92,8 @@ impl Xeditor {
 
             Message::SavedFile(Ok(path)) => {
                 self.path = Some(path);
+                self.is_dirty = false;
+
                 Task::none()
             }
             Message::SavedFile(Err(error)) => {
@@ -98,6 +104,7 @@ impl Xeditor {
             Message::NewFile => {
                 self.content = text_editor::Content::new();
                 self.path = None;
+                self.is_dirty = true;
                 Task::none()
             }
 
@@ -119,9 +126,13 @@ impl Xeditor {
                 bottom_left: 5.0,
             },
         };
-        let open_button = create_button("open a file", Message::OpenFile, open_icon());
-        let save_button = create_button("save file", Message::SaveFile, save_icon());
-        let new_file_button = create_button("Create new file", Message::NewFile, new_icon());
+        let open_button = create_button("open a file", Some(Message::OpenFile), open_icon());
+        let save_button = create_button(
+            "save file",
+            self.is_dirty.then_some(Message::SaveFile),
+            save_icon(),
+        );
+        let new_file_button = create_button("Create new file", Some(Message::NewFile), new_icon());
 
         let controls = row![open_button, save_button, new_file_button]
             .height(30)
@@ -139,7 +150,7 @@ impl Xeditor {
                     .and_then(|path| path.extension())
                     .and_then(|ext| ext.to_str())
                     .unwrap_or("rs"),
-                highlighter::Theme::SolarizedDark,
+                highlighter::Theme::Base16Mocha,
             );
 
         let editor_container = container(editor_area).width(FillPortion(9));
@@ -205,11 +216,21 @@ impl Xeditor {
 
 fn create_button<'a>(
     tip: &'a str,
-    message: Message,
+    message: Option<Message>,
     icon: Element<'a, Message>,
 ) -> Tooltip<'a, Message> {
+    let is_disabled = message.is_none();
     tooltip(
-        button(icon).on_press(message),
+        button(icon)
+            .on_press_maybe(message)
+            .padding([5, 10])
+            .style(move |theme, status| {
+                if is_disabled {
+                    button::secondary(theme, status)
+                } else {
+                    button::primary(theme, status)
+                }
+            }),
         tip,
         tooltip::Position::Bottom,
     )
