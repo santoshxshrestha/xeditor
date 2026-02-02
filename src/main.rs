@@ -15,6 +15,7 @@ use iced::theme::Theme;
 use iced::widget::Tooltip;
 use iced::widget::button;
 use iced::widget::container;
+use iced::widget::pick_list;
 use iced::widget::text;
 use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
@@ -28,9 +29,15 @@ use std::sync::Arc;
 use tokio::fs;
 use tokio::fs::ReadDir;
 
+#[derive(Debug, Clone)]
+pub enum FileNode {
+    File(Option<String>),
+    Directory(Option<Arc<ReadDir>>),
+}
+
 struct Xeditor {
     content: text_editor::Content,
-    tree_content: Option<Arc<ReadDir>>,
+    tree_content: FileNode,
     error: Option<Error>,
     path: Option<PathBuf>,
     is_dirty: bool,
@@ -54,7 +61,7 @@ impl Xeditor {
         (
             Self {
                 content: text_editor::Content::new(),
-                tree_content: None,
+                tree_content: FileNode::File(None),
                 error: None,
                 path: None,
                 is_dirty: true,
@@ -80,6 +87,14 @@ impl Xeditor {
                     self.content = text_editor::Content::with_text(&content.0);
                     self.path = Some(content.1);
                     self.is_dirty = false;
+
+                    let file_name = self
+                        .path
+                        .as_ref()
+                        .and_then(|path| path.file_name())
+                        .and_then(|name| Some(String::from(name.to_string_lossy())));
+
+                    self.tree_content = FileNode::File(file_name);
 
                     Task::none()
                 }
@@ -110,6 +125,7 @@ impl Xeditor {
                 self.content = text_editor::Content::new();
                 self.path = None;
                 self.is_dirty = true;
+                self.tree_content = FileNode::File(None);
                 Task::none()
             }
 
@@ -119,7 +135,7 @@ impl Xeditor {
                 Ok(contents) => {
                     let dir_list = contents.0;
                     self.path = Some(contents.1);
-                    self.tree_content = Some(dir_list);
+                    self.tree_content = FileNode::Directory(Some(dir_list));
                     Task::none()
                 }
                 Err(e) => {
@@ -181,14 +197,23 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        let file_name = self
-            .path
-            .as_ref()
-            .and_then(|path| path.file_name())
-            .and_then(|name| name.to_str())
-            .unwrap_or("New file");
+        // we can do another thing like create a variable for the column and then make it mutable
+        // iterate though reddir and then push the content there in the column
+        let tree_content = match &self.tree_content {
+            FileNode::File(file) => {
+                if let Some(file_name) = file {
+                    &file_name
+                } else {
+                    &"NewFile".to_string()
+                }
+            }
 
-        let tree_area = container(column![text("Explore"), text(format!("  {file_name}"))])
+            FileNode::Directory(directory) => {
+                todo!("handle the directory case")
+            }
+        };
+
+        let tree_area = container(column![text("EXPLORER"), text(format!("  {tree_content}")),])
             .width(FillPortion(1))
             .padding(10)
             .height(Fill)
