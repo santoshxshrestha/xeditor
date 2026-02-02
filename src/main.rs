@@ -205,23 +205,22 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        // we can do another thing like create a variable for the column and then make it mutable
-        // iterate though reddir and then push the content there in the column
-        let tree_content = match &self.tree_content {
-            FileNode::File(file) => {
-                if let Some(file_name) = file {
-                    &file_name
+        let mut tree_column = column![text("EXPLORER")];
+
+        match &self.tree_content {
+            FileNode::File(file_name) => {
+                if let Some(name) = file_name {
+                    tree_column = tree_column.push(text(format!(" {}", name)));
                 } else {
-                    &"NewFile".to_string()
+                    tree_column = tree_column.push(text("New File"));
                 }
             }
-
-            FileNode::Directory(directory) => {
-                todo!("handle the directory case")
+            _ => {
+                tree_column = tree_column.push(text("Directory View Not Implemented"));
             }
-        };
+        }
 
-        let tree_area = container(column![text("EXPLORER"), text(format!("  {tree_content}")),])
+        let tree_area = container(column![tree_column])
             .width(FillPortion(1))
             .padding(10)
             .height(Fill)
