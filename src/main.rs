@@ -26,9 +26,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
+use tokio::fs::ReadDir;
 
 struct Xeditor {
     content: text_editor::Content,
+    tree_content: Option<Arc<ReadDir>>,
     error: Option<Error>,
     path: Option<PathBuf>,
     is_dirty: bool,
@@ -42,6 +44,7 @@ enum Message {
     OpenedFile(Result<(Arc<String>, PathBuf), Error>),
     NewFile,
     OpenDirectory,
+    OpenedDirectory(Result<(Arc<ReadDir>, PathBuf), Error>),
     SaveFile,
     SavedFile(Result<PathBuf, Error>),
 }
@@ -51,6 +54,7 @@ impl Xeditor {
         (
             Self {
                 content: text_editor::Content::new(),
+                tree_content: None,
                 error: None,
                 path: None,
                 is_dirty: true,
@@ -109,10 +113,20 @@ impl Xeditor {
                 Task::none()
             }
 
-            _ => {
-                println!("Not implemented yet");
-                Task::none()
-            }
+            Message::OpenDirectory => Task::perform(pick_directory(), Message::OpenedDirectory),
+
+            Message::OpenedDirectory(dir_list) => match dir_list {
+                Ok(contents) => {
+                    let dir_list = contents.0;
+                    self.path = Some(contents.1);
+                    self.tree_content = Some(dir_list);
+                    Task::none()
+                }
+                Err(e) => {
+                    self.error = Some(e);
+                    Task::none()
+                }
+            },
         }
     }
 
@@ -128,6 +142,11 @@ impl Xeditor {
             },
         };
         let open_button = create_button("open a file", Some(Message::OpenFile), open_icon());
+        let open_dir_button = create_button(
+            "Open a directory",
+            Some(Message::OpenDirectory),
+            open_dir_icon(),
+        );
         let save_button = create_button(
             "save file",
             self.is_dirty.then_some(Message::SaveFile),
@@ -135,7 +154,7 @@ impl Xeditor {
         );
         let new_file_button = create_button("Create new file", Some(Message::NewFile), new_icon());
 
-        let controls = row![open_button, save_button, new_file_button]
+        let controls = row![open_button, open_dir_button, save_button, new_file_button]
             .height(30)
             .width(100)
             .padding(10)
@@ -260,6 +279,10 @@ fn open_icon<'a>() -> Element<'a, Message> {
     icon('\u{F115}')
 }
 
+fn open_dir_icon<'a>() -> Element<'a, Message> {
+    icon('\u{E802}')
+}
+
 fn icon<'a>(codepoint: char) -> Element<'a, Message> {
     const ICON_FONTS: Font = Font::with_name("xeditor-icons");
     text(codepoint).font(ICON_FONTS).into()
@@ -292,6 +315,15 @@ async fn read_file(path: PathBuf) -> Result<(Arc<String>, PathBuf), Error> {
     Ok((contents, path))
 }
 
+async fn read_directory(path: PathBuf) -> Result<(Arc<ReadDir>, PathBuf), Error> {
+    let dir_list = fs::read_dir(&path)
+        .await
+        .map(Arc::new)
+        .map_err(|error| error.kind())
+        .map_err(Error::IoError)?;
+    Ok((dir_list, path))
+}
+
 async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
     let path = rfd::AsyncFileDialog::new()
         .set_title("Choose a file")
@@ -300,6 +332,16 @@ async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
         .ok_or(Error::DialogClosed)?;
 
     read_file(path.path().to_owned()).await
+}
+
+async fn pick_directory() -> Result<(Arc<ReadDir>, PathBuf), Error> {
+    let path = rfd::AsyncFileDialog::new()
+        .set_title("Choose a directory")
+        .pick_folder()
+        .await
+        .ok_or(Error::DialogClosed)?;
+
+    read_directory(path.path().to_owned()).await
 }
 
 fn default_file() -> PathBuf {
