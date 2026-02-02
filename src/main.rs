@@ -20,15 +20,22 @@ use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
 use iced::widget::tooltip;
 use iced::widget::{column, row};
-use rfd;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
+use tokio::fs::ReadDir;
+
+#[derive(Debug, Clone)]
+pub enum FileNode {
+    File(Option<String>),
+    Directory(Option<Arc<ReadDir>>),
+}
 
 struct Xeditor {
     content: text_editor::Content,
+    tree_content: FileNode,
     error: Option<Error>,
     path: Option<PathBuf>,
     is_dirty: bool,
@@ -42,6 +49,7 @@ enum Message {
     OpenedFile(Result<(Arc<String>, PathBuf), Error>),
     NewFile,
     OpenDirectory,
+    OpenedDirectory(Result<(Arc<ReadDir>, PathBuf), Error>),
     SaveFile,
     SavedFile(Result<PathBuf, Error>),
 }
@@ -51,6 +59,7 @@ impl Xeditor {
         (
             Self {
                 content: text_editor::Content::new(),
+                tree_content: FileNode::File(None),
                 error: None,
                 path: None,
                 is_dirty: true,
@@ -76,6 +85,13 @@ impl Xeditor {
                     self.content = text_editor::Content::with_text(&content.0);
                     self.path = Some(content.1);
                     self.is_dirty = false;
+
+                    let file_name = self.path.as_ref().and_then(|path| {
+                        path.file_name()
+                            .map(|name| String::from(name.to_string_lossy()))
+                    });
+
+                    self.tree_content = FileNode::File(file_name);
 
                     Task::none()
                 }
@@ -106,13 +122,24 @@ impl Xeditor {
                 self.content = text_editor::Content::new();
                 self.path = None;
                 self.is_dirty = true;
+                self.tree_content = FileNode::File(None);
                 Task::none()
             }
 
-            _ => {
-                println!("Not implemented yet");
-                Task::none()
-            }
+            Message::OpenDirectory => Task::perform(pick_directory(), Message::OpenedDirectory),
+
+            Message::OpenedDirectory(dir_list) => match dir_list {
+                Ok(contents) => {
+                    let dir_list = contents.0;
+                    self.path = Some(contents.1);
+                    self.tree_content = FileNode::Directory(Some(dir_list));
+                    Task::none()
+                }
+                Err(e) => {
+                    self.error = Some(e);
+                    Task::none()
+                }
+            },
         }
     }
 
@@ -128,6 +155,11 @@ impl Xeditor {
             },
         };
         let open_button = create_button("open a file", Some(Message::OpenFile), open_icon());
+        let open_dir_button = create_button(
+            "Open a directory",
+            Some(Message::OpenDirectory),
+            open_dir_icon(),
+        );
         let save_button = create_button(
             "save file",
             self.is_dirty.then_some(Message::SaveFile),
@@ -135,7 +167,7 @@ impl Xeditor {
         );
         let new_file_button = create_button("Create new file", Some(Message::NewFile), new_icon());
 
-        let controls = row![open_button, save_button, new_file_button]
+        let _controls = row![open_button, open_dir_button, save_button, new_file_button]
             .height(30)
             .width(100)
             .padding(10)
@@ -157,26 +189,43 @@ impl Xeditor {
                 keyboard::Key::Character("s") if key_press.modifiers.command() => {
                     Some(text_editor::Binding::Custom(Message::SaveFile))
                 }
+                keyboard::Key::Character("o") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::OpenFile))
+                }
+                keyboard::Key::Character("n") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::NewFile))
+                }
+                keyboard::Key::Character("O") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::OpenDirectory))
+                }
                 _ => text_editor::Binding::from_key_press(key_press),
             });
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        let file_name = self
-            .path
-            .as_ref()
-            .and_then(|path| path.file_name())
-            .and_then(|name| name.to_str())
-            .unwrap_or("New file");
+        let mut tree_column = column![text("EXPLORER")];
 
-        let tree_area = container(column![text("Explore"), text(format!("  {file_name}"))])
+        match &self.tree_content {
+            FileNode::File(file_name) => {
+                if let Some(name) = file_name {
+                    tree_column = tree_column.push(text(format!(" {}", name)));
+                } else {
+                    tree_column = tree_column.push(text("New File"));
+                }
+            }
+            _ => {
+                tree_column = tree_column.push(text("Directory View Not Implemented"));
+            }
+        }
+
+        let tree_area = container(column![tree_column])
             .width(FillPortion(1))
             .padding(10)
             .height(Fill)
             .style(move |_theme| container::Style {
                 text_color: Some(Color::WHITE),
                 background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-                border: border,
+                border,
                 shadow: iced::Shadow {
                     color: Color::from_rgb8(30, 32, 48),
                     offset: iced::Vector { x: 0.5, y: 1.0 },
@@ -205,24 +254,21 @@ impl Xeditor {
             row![status, position]
         };
 
-        container(row![
-            tree_area,
-            column![controls, editor_container, status_bar]
-        ])
-        .padding(10)
-        .center(Fill)
-        .style(move |_theme| container::Style {
-            text_color: Some(Color::WHITE),
-            background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-            border: border,
-            shadow: iced::Shadow {
-                color: Color::from_rgb8(30, 32, 48),
-                offset: iced::Vector { x: 0.5, y: 1.0 },
-                blur_radius: 3.0,
-            },
-            snap: false,
-        })
-        .into()
+        container(row![tree_area, column![editor_container, status_bar]])
+            .padding(10)
+            .center(Fill)
+            .style(move |_theme| container::Style {
+                text_color: Some(Color::WHITE),
+                background: Some(Theme::CatppuccinMocha.base().background_color.into()),
+                border,
+                shadow: iced::Shadow {
+                    color: Color::from_rgb8(30, 32, 48),
+                    offset: iced::Vector { x: 0.5, y: 1.0 },
+                    blur_radius: 3.0,
+                },
+                snap: false,
+            })
+            .into()
     }
 }
 
@@ -260,6 +306,10 @@ fn open_icon<'a>() -> Element<'a, Message> {
     icon('\u{F115}')
 }
 
+fn open_dir_icon<'a>() -> Element<'a, Message> {
+    icon('\u{E802}')
+}
+
 fn icon<'a>(codepoint: char) -> Element<'a, Message> {
     const ICON_FONTS: Font = Font::with_name("xeditor-icons");
     text(codepoint).font(ICON_FONTS).into()
@@ -292,6 +342,15 @@ async fn read_file(path: PathBuf) -> Result<(Arc<String>, PathBuf), Error> {
     Ok((contents, path))
 }
 
+async fn read_directory(path: PathBuf) -> Result<(Arc<ReadDir>, PathBuf), Error> {
+    let dir_list = fs::read_dir(&path)
+        .await
+        .map(Arc::new)
+        .map_err(|error| error.kind())
+        .map_err(Error::IoError)?;
+    Ok((dir_list, path))
+}
+
 async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
     let path = rfd::AsyncFileDialog::new()
         .set_title("Choose a file")
@@ -300,6 +359,16 @@ async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
         .ok_or(Error::DialogClosed)?;
 
     read_file(path.path().to_owned()).await
+}
+
+async fn pick_directory() -> Result<(Arc<ReadDir>, PathBuf), Error> {
+    let path = rfd::AsyncFileDialog::new()
+        .set_title("Choose a directory")
+        .pick_folder()
+        .await
+        .ok_or(Error::DialogClosed)?;
+
+    read_directory(path.path().to_owned()).await
 }
 
 fn default_file() -> PathBuf {
