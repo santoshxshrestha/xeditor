@@ -20,7 +20,6 @@ use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
 use iced::widget::tooltip;
 use iced::widget::{column, row};
-use rfd;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
@@ -87,11 +86,10 @@ impl Xeditor {
                     self.path = Some(content.1);
                     self.is_dirty = false;
 
-                    let file_name = self
-                        .path
-                        .as_ref()
-                        .and_then(|path| path.file_name())
-                        .and_then(|name| Some(String::from(name.to_string_lossy())));
+                    let file_name = self.path.as_ref().and_then(|path| {
+                        path.file_name()
+                            .map(|name| String::from(name.to_string_lossy()))
+                    });
 
                     self.tree_content = FileNode::File(file_name);
 
@@ -227,7 +225,7 @@ impl Xeditor {
             .style(move |_theme| container::Style {
                 text_color: Some(Color::WHITE),
                 background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-                border: border,
+                border,
                 shadow: iced::Shadow {
                     color: Color::from_rgb8(30, 32, 48),
                     offset: iced::Vector { x: 0.5, y: 1.0 },
@@ -262,7 +260,7 @@ impl Xeditor {
             .style(move |_theme| container::Style {
                 text_color: Some(Color::WHITE),
                 background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-                border: border,
+                border,
                 shadow: iced::Shadow {
                     color: Color::from_rgb8(30, 32, 48),
                     offset: iced::Vector { x: 0.5, y: 1.0 },
