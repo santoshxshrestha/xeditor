@@ -15,7 +15,6 @@ use iced::theme::Theme;
 use iced::widget::Tooltip;
 use iced::widget::button;
 use iced::widget::container;
-use iced::widget::pick_list;
 use iced::widget::text;
 use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
@@ -170,7 +169,7 @@ impl Xeditor {
         );
         let new_file_button = create_button("Create new file", Some(Message::NewFile), new_icon());
 
-        let controls = row![open_button, open_dir_button, save_button, new_file_button]
+        let _controls = row![open_button, open_dir_button, save_button, new_file_button]
             .height(30)
             .width(100)
             .padding(10)
@@ -191,6 +190,15 @@ impl Xeditor {
             .key_binding(|key_press| match key_press.key.as_ref() {
                 keyboard::Key::Character("s") if key_press.modifiers.command() => {
                     Some(text_editor::Binding::Custom(Message::SaveFile))
+                }
+                keyboard::Key::Character("o") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::OpenFile))
+                }
+                keyboard::Key::Character("n") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::NewFile))
+                }
+                keyboard::Key::Character("O") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::OpenDirectory))
                 }
                 _ => text_editor::Binding::from_key_press(key_press),
             });
@@ -249,24 +257,21 @@ impl Xeditor {
             row![status, position]
         };
 
-        container(row![
-            tree_area,
-            column![controls, editor_container, status_bar]
-        ])
-        .padding(10)
-        .center(Fill)
-        .style(move |_theme| container::Style {
-            text_color: Some(Color::WHITE),
-            background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-            border: border,
-            shadow: iced::Shadow {
-                color: Color::from_rgb8(30, 32, 48),
-                offset: iced::Vector { x: 0.5, y: 1.0 },
-                blur_radius: 3.0,
-            },
-            snap: false,
-        })
-        .into()
+        container(row![tree_area, column![editor_container, status_bar]])
+            .padding(10)
+            .center(Fill)
+            .style(move |_theme| container::Style {
+                text_color: Some(Color::WHITE),
+                background: Some(Theme::CatppuccinMocha.base().background_color.into()),
+                border: border,
+                shadow: iced::Shadow {
+                    color: Color::from_rgb8(30, 32, 48),
+                    offset: iced::Vector { x: 0.5, y: 1.0 },
+                    blur_radius: 3.0,
+                },
+                snap: false,
+            })
+            .into()
     }
 }
 
