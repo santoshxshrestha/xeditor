@@ -162,9 +162,14 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        // TODO: Need to parse the the path and then get the name of the file and directory and
-        // read recursively
-        let tree_area = container(column![text("file_name")])
+        let file_name = self
+            .path
+            .as_ref()
+            .and_then(|path| path.file_name())
+            .and_then(|name| name.to_str())
+            .unwrap_or("New file");
+
+        let tree_area = container(column![text("Explore"), text(format!("  {file_name}"))])
             .width(FillPortion(1))
             .padding(10)
             .height(Fill)
