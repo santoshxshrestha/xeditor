@@ -29,8 +29,16 @@ use tokio::fs::ReadDir;
 
 #[derive(Debug, Clone)]
 pub enum FileNode {
-    File(Option<String>),
-    Directory(Option<Arc<ReadDir>>),
+    File {
+        name: String,
+        path: Option<PathBuf>,
+    },
+    Directory {
+        name: String,
+        path: PathBuf,
+        children: Option<Arc<FileNode>>,
+        expanded: bool,
+    },
 }
 
 struct Xeditor {
@@ -59,7 +67,10 @@ impl Xeditor {
         (
             Self {
                 content: text_editor::Content::new(),
-                tree_content: FileNode::File(None),
+                tree_content: FileNode::File {
+                    name: String::from("New File"),
+                    path: None,
+                },
                 error: None,
                 path: None,
                 is_dirty: true,
@@ -86,12 +97,19 @@ impl Xeditor {
                     self.path = Some(content.1);
                     self.is_dirty = false;
 
-                    let file_name = self.path.as_ref().and_then(|path| {
-                        path.file_name()
-                            .map(|name| String::from(name.to_string_lossy()))
-                    });
+                    let file_name = self
+                        .path
+                        .as_ref()
+                        .and_then(|path| {
+                            path.file_name()
+                                .map(|name| String::from(name.to_string_lossy()))
+                        })
+                        .unwrap_or_else(|| String::from("Default"));
 
-                    self.tree_content = FileNode::File(file_name);
+                    self.tree_content = FileNode::File {
+                        name: file_name,
+                        path: self.path,
+                    };
 
                     Task::none()
                 }
@@ -122,7 +140,10 @@ impl Xeditor {
                 self.content = text_editor::Content::new();
                 self.path = None;
                 self.is_dirty = true;
-                self.tree_content = FileNode::File(None);
+                self.tree_content = FileNode::File {
+                    name: String::from("New File"),
+                    path: None,
+                };
                 Task::none()
             }
 
