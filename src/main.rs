@@ -230,7 +230,7 @@ impl Xeditor {
                     tree_column = tree_column.push(text(format!(" {}", name)));
                 }
                 FileNode::Directory { name, .. } => {
-                    tree_column = tree_column.push(text(format!("📁 {}", name)));
+                    tree_column = tree_column.push(text(format!(" {}", name)));
                 }
             }
         }
