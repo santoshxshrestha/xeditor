@@ -36,14 +36,13 @@ pub enum FileNode {
     Directory {
         name: String,
         path: PathBuf,
-        children: Option<Arc<FileNode>>,
         expanded: bool,
     },
 }
 
 struct Xeditor {
     content: text_editor::Content,
-    tree_content: FileNode,
+    tree_content: Vec<FileNode>,
     error: Option<Error>,
     path: Option<PathBuf>,
     is_dirty: bool,
@@ -57,7 +56,7 @@ enum Message {
     OpenedFile(Result<(Arc<String>, PathBuf), Error>),
     NewFile,
     OpenDirectory,
-    OpenedDirectory(Result<(Arc<ReadDir>, PathBuf), Error>),
+    OpenedDirectory(Result<Vec<FileNode>, Error>),
     SaveFile,
     SavedFile(Result<PathBuf, Error>),
 }
@@ -67,10 +66,10 @@ impl Xeditor {
         (
             Self {
                 content: text_editor::Content::new(),
-                tree_content: FileNode::File {
+                tree_content: vec![FileNode::File {
                     name: String::from("New File"),
                     path: None,
-                },
+                }],
                 error: None,
                 path: None,
                 is_dirty: true,
@@ -106,10 +105,10 @@ impl Xeditor {
                         })
                         .unwrap_or_else(|| String::from("Default"));
 
-                    self.tree_content = FileNode::File {
+                    self.tree_content = vec![FileNode::File {
                         name: file_name,
-                        path: self.path,
-                    };
+                        path: self.path.clone(),
+                    }];
 
                     Task::none()
                 }
@@ -140,10 +139,10 @@ impl Xeditor {
                 self.content = text_editor::Content::new();
                 self.path = None;
                 self.is_dirty = true;
-                self.tree_content = FileNode::File {
+                self.tree_content = vec![FileNode::File {
                     name: String::from("New File"),
                     path: None,
-                };
+                }];
                 Task::none()
             }
 
@@ -151,9 +150,7 @@ impl Xeditor {
 
             Message::OpenedDirectory(dir_list) => match dir_list {
                 Ok(contents) => {
-                    let dir_list = contents.0;
-                    self.path = Some(contents.1);
-                    self.tree_content = FileNode::Directory(Some(dir_list));
+                    self.tree_content = contents;
                     Task::none()
                 }
                 Err(e) => {
@@ -363,13 +360,12 @@ async fn read_file(path: PathBuf) -> Result<(Arc<String>, PathBuf), Error> {
     Ok((contents, path))
 }
 
-async fn read_directory(path: PathBuf) -> Result<(Arc<ReadDir>, PathBuf), Error> {
+async fn read_directory(path: PathBuf) -> Result<ReadDir, Error> {
     let dir_list = fs::read_dir(&path)
         .await
-        .map(Arc::new)
         .map_err(|error| error.kind())
         .map_err(Error::IoError)?;
-    Ok((dir_list, path))
+    Ok(dir_list)
 }
 
 async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
@@ -382,14 +378,39 @@ async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
     read_file(path.path().to_owned()).await
 }
 
-async fn pick_directory() -> Result<(Arc<ReadDir>, PathBuf), Error> {
-    let path = rfd::AsyncFileDialog::new()
+async fn pick_directory() -> Result<Vec<FileNode>, Error> {
+    let file_handle = rfd::AsyncFileDialog::new()
         .set_title("Choose a directory")
         .pick_folder()
         .await
         .ok_or(Error::DialogClosed)?;
 
-    read_directory(path.path().to_owned()).await
+    let mut read_dir = read_directory(file_handle.path().to_owned()).await?;
+
+    let mut childrens: Vec<FileNode> = Vec::new();
+    while let Some(entry) = read_dir.next_entry().await.unwrap() {
+        let path = entry.path();
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+
+        if path.is_dir() {
+            childrens.push(FileNode::Directory {
+                name: name,
+                path: path,
+                expanded: false,
+            });
+        } else {
+            childrens.push(FileNode::File {
+                name,
+                path: Some(path),
+            });
+        }
+    }
+
+    Ok(childrens)
 }
 
 fn default_file() -> PathBuf {
