@@ -397,8 +397,8 @@ async fn pick_directory() -> Result<Vec<FileNode>, Error> {
 
         if path.is_dir() {
             childrens.push(FileNode::Directory {
-                name: name,
-                path: path,
+                name,
+                path,
                 expanded: false,
             });
         } else {
