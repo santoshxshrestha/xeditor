@@ -223,16 +223,15 @@ impl Xeditor {
 
         let mut tree_column = column![text("EXPLORER")];
 
-        match &self.tree_content {
-            FileNode::File(file_name) => {
-                if let Some(name) = file_name {
+        // TODO: have a type that can be clickable and then implement it for both file and directory
+        for node in self.tree_content.iter() {
+            match node {
+                FileNode::File { name, .. } => {
                     tree_column = tree_column.push(text(format!(" {}", name)));
-                } else {
-                    tree_column = tree_column.push(text("New File"));
                 }
-            }
-            _ => {
-                tree_column = tree_column.push(text("Directory View Not Implemented"));
+                FileNode::Directory { name, .. } => {
+                    tree_column = tree_column.push(text(format!("📁 {}", name)));
+                }
             }
         }
 
