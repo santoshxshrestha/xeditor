@@ -213,7 +213,7 @@ impl Xeditor {
                 keyboard::Key::Character("n") if key_press.modifiers.command() => {
                     Some(text_editor::Binding::Custom(Message::NewFile))
                 }
-                keyboard::Key::Character("O") if key_press.modifiers.command() => {
+                keyboard::Key::Character("p") if key_press.modifiers.command() => {
                     Some(text_editor::Binding::Custom(Message::OpenDirectory))
                 }
                 _ => text_editor::Binding::from_key_press(key_press),
