@@ -227,10 +227,10 @@ impl Xeditor {
         for node in self.tree_content.iter() {
             match node {
                 FileNode::File { name, .. } => {
-                    tree_column = tree_column.push(text(format!(" {}", name)));
+                    tree_column = tree_column.push(text(format!("  {}", name)));
                 }
                 FileNode::Directory { name, .. } => {
-                    tree_column = tree_column.push(text(format!(" {}", name)));
+                    tree_column = tree_column.push(text(format!(" {}", name)));
                 }
             }
         }
@@ -330,6 +330,14 @@ fn open_dir_icon<'a>() -> Element<'a, Message> {
 fn icon<'a>(codepoint: char) -> Element<'a, Message> {
     const ICON_FONTS: Font = Font::with_name("xeditor-icons");
     text(codepoint).font(ICON_FONTS).into()
+}
+
+fn directory_icon<'a>() -> Element<'a, Message> {
+    icon('\u{E802}')
+}
+
+fn file_icon<'a>() -> Element<'a, Message> {
+    icon('\u{F15B}')
 }
 
 fn main() -> iced::Result {
