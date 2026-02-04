@@ -25,7 +25,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
-use tokio::fs::ReadDir;
 
 #[derive(Debug, Clone)]
 pub enum FileNode {
@@ -37,6 +36,7 @@ pub enum FileNode {
         name: String,
         path: PathBuf,
         expanded: bool,
+        children_nodes: Box<Option<FileNode>>,
     },
 }
 
@@ -213,7 +213,7 @@ impl Xeditor {
                 keyboard::Key::Character("n") if key_press.modifiers.command() => {
                     Some(text_editor::Binding::Custom(Message::NewFile))
                 }
-                keyboard::Key::Character("p") if key_press.modifiers.command() => {
+                keyboard::Key::Character("k") if key_press.modifiers.command() => {
                     Some(text_editor::Binding::Custom(Message::OpenDirectory))
                 }
                 _ => text_editor::Binding::from_key_press(key_press),
@@ -367,32 +367,12 @@ async fn read_file(path: PathBuf) -> Result<(Arc<String>, PathBuf), Error> {
     Ok((contents, path))
 }
 
-async fn read_directory(path: PathBuf) -> Result<ReadDir, Error> {
-    let dir_list = fs::read_dir(&path)
+// This is just read the content of the directory and return the vector  fo the fielNone
+async fn read_directory(path: PathBuf) -> Result<Vec<FileNode>, Error> {
+    let mut read_dir = fs::read_dir(&path)
         .await
         .map_err(|error| error.kind())
         .map_err(Error::IoError)?;
-    Ok(dir_list)
-}
-
-async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
-    let path = rfd::AsyncFileDialog::new()
-        .set_title("Choose a file")
-        .pick_file()
-        .await
-        .ok_or(Error::DialogClosed)?;
-
-    read_file(path.path().to_owned()).await
-}
-
-async fn pick_directory() -> Result<Vec<FileNode>, Error> {
-    let file_handle = rfd::AsyncFileDialog::new()
-        .set_title("Choose a directory")
-        .pick_folder()
-        .await
-        .ok_or(Error::DialogClosed)?;
-
-    let mut read_dir = read_directory(file_handle.path().to_owned()).await?;
 
     let mut childrens: Vec<FileNode> = Vec::new();
     while let Some(entry) = read_dir.next_entry().await.unwrap() {
@@ -408,6 +388,7 @@ async fn pick_directory() -> Result<Vec<FileNode>, Error> {
                 name,
                 path,
                 expanded: false,
+                children_nodes: Box::new(None),
             });
         } else {
             childrens.push(FileNode::File {
@@ -416,8 +397,30 @@ async fn pick_directory() -> Result<Vec<FileNode>, Error> {
             });
         }
     }
-
     Ok(childrens)
+}
+
+async fn pick_file() -> Result<(Arc<String>, PathBuf), Error> {
+    let path = rfd::AsyncFileDialog::new()
+        .set_title("Choose a file")
+        .pick_file()
+        .await
+        .ok_or(Error::DialogClosed)?
+        .path()
+        .to_owned();
+
+    read_file(path).await
+}
+
+async fn pick_directory() -> Result<Vec<FileNode>, Error> {
+    let path = rfd::AsyncFileDialog::new()
+        .set_title("Choose a directory")
+        .pick_folder()
+        .await
+        .ok_or(Error::DialogClosed)?
+        .path()
+        .to_owned();
+    read_directory(path).await
 }
 
 fn default_file() -> PathBuf {
