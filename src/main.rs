@@ -3,6 +3,7 @@ use iced::Border;
 use iced::Color;
 use iced::Element;
 use iced::Font;
+use iced::Length;
 use iced::Length::Fill;
 use iced::Length::FillPortion;
 use iced::Settings;
@@ -12,13 +13,12 @@ use iced::keyboard;
 use iced::task::Task;
 use iced::theme::Base;
 use iced::theme::Theme;
-use iced::widget::Tooltip;
+use iced::widget::Space;
 use iced::widget::button;
 use iced::widget::container;
 use iced::widget::text;
 use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
-use iced::widget::tooltip;
 use iced::widget::{column, row};
 use std::io::ErrorKind;
 use std::path::Path;
@@ -212,24 +212,6 @@ impl Xeditor {
                 bottom_left: 5.0,
             },
         };
-        let open_button = create_button("open a file", Some(Message::OpenFile), open_icon());
-        let open_dir_button = create_button(
-            "Open a directory",
-            Some(Message::OpenDirectory),
-            open_dir_icon(),
-        );
-        let save_button = create_button(
-            "save file",
-            self.is_dirty.then_some(Message::SaveFile),
-            save_icon(),
-        );
-        let new_file_button = create_button("Create new file", Some(Message::NewFile), new_icon());
-
-        let _controls = row![open_button, open_dir_button, save_button, new_file_button]
-            .height(30)
-            .width(100)
-            .padding(10)
-            .spacing(10);
 
         let editor_area = text_editor(&self.content)
             .placeholder("Type some thing bruth")
@@ -261,7 +243,8 @@ impl Xeditor {
 
         let editor_container = container(editor_area).width(FillPortion(9));
 
-        let mut tree_column = column![text("EXPLORER")];
+        let mut tree_column = column![text("EXPLORER").size(12)];
+        tree_column = tree_column.spacing(4);
         tree_column = tree_column.extend(render_tree_nodes(&self.tree_content, 0));
 
         let tree_area = container(column![tree_column])
@@ -318,74 +301,60 @@ impl Xeditor {
     }
 }
 
-fn create_button<'a>(
-    tip: &'a str,
-    message: Option<Message>,
-    icon: Element<'a, Message>,
-) -> Tooltip<'a, Message> {
-    let is_disabled = message.is_none();
-    tooltip(
-        button(icon)
-            .on_press_maybe(message)
-            .padding([5, 10])
-            .style(move |theme, status| {
-                if is_disabled {
-                    button::secondary(theme, status)
-                } else {
-                    button::primary(theme, status)
-                }
-            }),
-        tip,
-        tooltip::Position::Bottom,
-    )
-}
-
-fn new_icon<'a>() -> Element<'a, Message> {
-    icon('\u{E800}')
-}
-
-fn save_icon<'a>() -> Element<'a, Message> {
-    icon('\u{E801}')
-}
-
-fn open_icon<'a>() -> Element<'a, Message> {
-    icon('\u{F115}')
-}
-
-fn open_dir_icon<'a>() -> Element<'a, Message> {
-    icon('\u{E802}')
-}
-
 fn icon<'a>(codepoint: char) -> Element<'a, Message> {
-    const ICON_FONTS: Font = Font::with_name("xeditor-icons");
+    const ICON_FONTS: Font = Font::with_name("xeditor");
     text(codepoint).font(ICON_FONTS).into()
 }
 
 fn directory_icon<'a>() -> Element<'a, Message> {
-    icon('\u{E802}')
+    icon('\u{E001}')
 }
 
 fn file_icon<'a>() -> Element<'a, Message> {
-    icon('\u{F15B}')
+    icon('\u{E002}')
+}
+
+fn closed_chevron<'a>() -> Element<'a, Message> {
+    icon('\u{F001}')
+}
+
+fn opened_chevron<'a>() -> Element<'a, Message> {
+    icon('\u{F002}')
 }
 
 fn render_tree_nodes<'a>(nodes: &'a [FileNode], depth: usize) -> Vec<Element<'a, Message>> {
     let mut out: Vec<Element<'a, Message>> = Vec::new();
-    let pad = "  ".repeat(depth);
+    let indent = (depth as f32) * 14.0;
 
     for node in nodes {
         match node {
             FileNode::File { name, path } => {
-                let label = text(format!("{}{}", pad, name));
+                let chevron = text("").width(Length::Fixed(10.0));
+                let label = text(name);
+                let row_content = row![chevron, file_icon(), label].spacing(6);
 
                 if let Some(path) = path {
                     out.push(
-                        button(row![file_icon(), label].spacing(6))
-                            .on_press(Message::OpenTreeFile(path.clone()))
-                            .into(),
+                        row![
+                            Space::new().width(Length::Fixed(indent)),
+                            button(container(row_content).width(Fill).align_x(Alignment::Start))
+                                .on_press(Message::OpenTreeFile(path.clone()))
+                                .padding([2, 6])
+                                .width(Fill)
+                                .style(button::text)
+                        ]
+                        .into(),
                     );
                 } else {
-                    out.push(label.into());
+                    out.push(
+                        row![
+                            Space::new().width(Length::Fixed(indent)),
+                            container(container(row_content).width(Fill).align_x(Alignment::Start))
+                                .padding([2, 6])
+                                .width(Fill)
+                        ]
+                        .into(),
+                    );
                 }
             }
             FileNode::Directory {
@@ -394,12 +363,28 @@ fn render_tree_nodes<'a>(nodes: &'a [FileNode], depth: usize) -> Vec<Element<'a,
                 expanded,
                 children_nodes,
             } => {
-                let chevron = if *expanded { "v" } else { ">" };
-                let label = text(format!("{}{} {}", pad, chevron, name));
+                let chevron = if *expanded {
+                    // text("v").width(Length::Fixed(4.0))
+                    opened_chevron()
+                } else {
+                    // text(">").width(Length::Fixed(4.0))
+                    closed_chevron()
+                };
+                let label = text(name);
                 out.push(
-                    button(row![directory_icon(), label].spacing(6))
+                    row![
+                        Space::new().width(Length::Fixed(indent)),
+                        button(
+                            container(row![chevron, label].spacing(6))
+                                .width(Fill)
+                                .align_x(Alignment::Start)
+                        )
                         .on_press(Message::OpenChildDirectory(path.clone()))
-                        .into(),
+                        .padding([2, 6])
+                        .width(Fill)
+                        .style(button::text)
+                    ]
+                    .into(),
                 );
 
                 if *expanded {
