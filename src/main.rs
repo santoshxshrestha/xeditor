@@ -302,25 +302,26 @@ impl Xeditor {
 }
 
 fn icon<'a>(codepoint: char) -> Element<'a, Message> {
-    const ICON_FONTS: Font = Font::with_name("xeditor-icons");
+    const ICON_FONTS: Font = Font::with_name("xeditor");
     text(codepoint).font(ICON_FONTS).into()
 }
 
 fn directory_icon<'a>() -> Element<'a, Message> {
-    icon('\u{E802}')
+    icon('\u{E001}')
 }
 
 fn file_icon<'a>() -> Element<'a, Message> {
-    icon('\u{F15B}')
+    icon('\u{E002}')
 }
 
-fn open_chevron<'a>() -> Element<'a, Message> {
-    icon('\u{F004}')
+fn closed_chevron<'a>() -> Element<'a, Message> {
+    icon('\u{F001}')
 }
 
-fn close_chevron<'a>() -> Element<'a, Message> {
-    icon('\u{F006}')
+fn opened_chevron<'a>() -> Element<'a, Message> {
+    icon('\u{F002}')
 }
+
 fn render_tree_nodes<'a>(nodes: &'a [FileNode], depth: usize) -> Vec<Element<'a, Message>> {
     let mut out: Vec<Element<'a, Message>> = Vec::new();
     let indent = (depth as f32) * 14.0;
@@ -363,9 +364,11 @@ fn render_tree_nodes<'a>(nodes: &'a [FileNode], depth: usize) -> Vec<Element<'a,
                 children_nodes,
             } => {
                 let chevron = if *expanded {
-                    text("v").width(Length::Fixed(4.0))
+                    // text("v").width(Length::Fixed(4.0))
+                    opened_chevron()
                 } else {
-                    text(">").width(Length::Fixed(4.0))
+                    // text(">").width(Length::Fixed(4.0))
+                    closed_chevron()
                 };
                 let label = text(name);
                 out.push(
