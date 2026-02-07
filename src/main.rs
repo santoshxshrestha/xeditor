@@ -1,3 +1,4 @@
+
 use iced::Alignment;
 use iced::Border;
 use iced::Color;
@@ -16,6 +17,7 @@ use iced::theme::Theme;
 use iced::widget::Space;
 use iced::widget::button;
 use iced::widget::container;
+use iced::widget::pane_grid;
 use iced::widget::text;
 use iced::widget::text_editor;
 use iced::widget::text_editor::Position;
@@ -43,15 +45,23 @@ pub enum FileNode {
 struct Xeditor {
     content: text_editor::Content,
     tree_content: Vec<FileNode>,
+    panes: pane_grid::State<PaneKind>,
     error: Option<Error>,
     path: Option<PathBuf>,
     is_dirty: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PaneKind {
+    Explorer,
+    Editor,
 }
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
 enum Message {
     ActionPerformed(text_editor::Action),
+    PaneResized(pane_grid::ResizeEvent),
     OpenFile,
     OpenedFile(Result<(Arc<String>, PathBuf), Error>),
     OpenedTreeFile(Result<(Arc<String>, PathBuf), Error>),
@@ -67,6 +77,14 @@ enum Message {
 
 impl Xeditor {
     fn new() -> (Self, Task<Message>) {
+        let (mut panes, explorer) = pane_grid::State::new(PaneKind::Explorer);
+        if let Some((_editor, split)) =
+            panes.split(pane_grid::Axis::Vertical, explorer, PaneKind::Editor)
+        {
+            // Give the explorer a sensible starting width.
+            panes.resize(split, 0.22);
+        }
+
         (
             Self {
                 content: text_editor::Content::new(),
@@ -74,6 +92,7 @@ impl Xeditor {
                     name: String::from("New File"),
                     path: None,
                 }],
+                panes,
                 error: None,
                 path: None,
                 is_dirty: true,
@@ -94,6 +113,11 @@ impl Xeditor {
 
                 self.content.perform(content);
 
+                Task::none()
+            }
+
+            Message::PaneResized(event) => {
+                self.panes.resize(event.split, event.ratio);
                 Task::none()
             }
 
@@ -213,77 +237,91 @@ impl Xeditor {
             },
         };
 
-        let editor_area = text_editor(&self.content)
-            .placeholder("Type some thing bruth")
-            .height(Fill)
-            .on_action(Message::ActionPerformed)
-            .highlight(
-                self.path
-                    .as_ref()
-                    .and_then(|path| path.extension())
-                    .and_then(|ext| ext.to_str())
-                    .unwrap_or("rs"),
-                highlighter::Theme::Base16Mocha,
-            )
-            .key_binding(|key_press| match key_press.key.as_ref() {
-                keyboard::Key::Character("s") if key_press.modifiers.command() => {
-                    Some(text_editor::Binding::Custom(Message::SaveFile))
-                }
-                keyboard::Key::Character("o") if key_press.modifiers.command() => {
-                    Some(text_editor::Binding::Custom(Message::OpenFile))
-                }
-                keyboard::Key::Character("n") if key_press.modifiers.command() => {
-                    Some(text_editor::Binding::Custom(Message::NewFile))
-                }
-                keyboard::Key::Character("k") if key_press.modifiers.command() => {
-                    Some(text_editor::Binding::Custom(Message::OpenDirectory))
-                }
-                _ => text_editor::Binding::from_key_press(key_press),
-            });
+        let grid = pane_grid(&self.panes, |_, kind, _is_maximized| match kind {
+            PaneKind::Explorer => {
+                let mut tree_column = column![text("EXPLORER").size(12)];
+                tree_column = tree_column.spacing(4);
+                tree_column = tree_column.extend(render_tree_nodes(&self.tree_content, 0));
 
-        let editor_container = container(editor_area).width(FillPortion(9));
+                let border = border.clone();
+                let tree_area = container(column![tree_column])
+                    .width(Fill)
+                    .padding(10)
+                    .height(Fill)
+                    .style(move |_theme| container::Style {
+                        text_color: Some(Color::WHITE),
+                        background: Some(Theme::CatppuccinMocha.base().background_color.into()),
+                        border,
+                        shadow: iced::Shadow {
+                            color: Color::from_rgb8(30, 32, 48),
+                            offset: iced::Vector { x: 0.5, y: 1.0 },
+                            blur_radius: 3.0,
+                        },
+                        snap: false,
+                    });
 
-        let mut tree_column = column![text("EXPLORER").size(12)];
-        tree_column = tree_column.spacing(4);
-        tree_column = tree_column.extend(render_tree_nodes(&self.tree_content, 0));
+                pane_grid::Content::new(tree_area)
+            }
+            PaneKind::Editor => {
+                let editor_area = text_editor(&self.content)
+                    .placeholder("Type some thing bruth")
+                    .height(Fill)
+                    .on_action(Message::ActionPerformed)
+                    .highlight(
+                        self.path
+                            .as_ref()
+                            .and_then(|path| path.extension())
+                            .and_then(|ext| ext.to_str())
+                            .unwrap_or("rs"),
+                        highlighter::Theme::Base16Mocha,
+                    )
+                    .key_binding(|key_press| match key_press.key.as_ref() {
+                        keyboard::Key::Character("s") if key_press.modifiers.command() => {
+                            Some(text_editor::Binding::Custom(Message::SaveFile))
+                        }
+                        keyboard::Key::Character("o") if key_press.modifiers.command() => {
+                            Some(text_editor::Binding::Custom(Message::OpenFile))
+                        }
+                        keyboard::Key::Character("n") if key_press.modifiers.command() => {
+                            Some(text_editor::Binding::Custom(Message::NewFile))
+                        }
+                        keyboard::Key::Character("k") if key_press.modifiers.command() => {
+                            Some(text_editor::Binding::Custom(Message::OpenDirectory))
+                        }
+                        _ => text_editor::Binding::from_key_press(key_press),
+                    });
 
-        let tree_area = container(column![tree_column])
-            .width(FillPortion(1))
-            .padding(10)
-            .height(Fill)
-            .style(move |_theme| container::Style {
-                text_color: Some(Color::WHITE),
-                background: Some(Theme::CatppuccinMocha.base().background_color.into()),
-                border,
-                shadow: iced::Shadow {
-                    color: Color::from_rgb8(30, 32, 48),
-                    offset: iced::Vector { x: 0.5, y: 1.0 },
-                    blur_radius: 3.0,
-                },
-                snap: false,
-            });
+                let editor_container = container(editor_area).width(Fill).height(Fill);
 
-        let status_bar = {
-            let status = if let Some(Error::IoError(error)) = self.error {
-                text(error.to_string())
-            } else {
-                match self.path.as_deref().and_then(Path::to_str) {
-                    Some(path) => text(path).size(14),
-                    None => text("New File"),
-                }
-            };
+                let status_bar = {
+                    let status = if let Some(Error::IoError(error)) = self.error {
+                        text(error.to_string())
+                    } else {
+                        match self.path.as_deref().and_then(Path::to_str) {
+                            Some(path) => text(path).size(14),
+                            None => text("New File"),
+                        }
+                    };
 
-            let position = {
-                let Position { line, column } = self.content.cursor().position;
-                text(format!("Ln {}, Col {}", line + 1, column + 1))
-                    .width(FillPortion(1))
-                    .size(16)
-                    .align_x(Alignment::End)
-            };
-            row![status, position]
-        };
+                    let position = {
+                        let Position { line, column } = self.content.cursor().position;
+                        text(format!("Ln {}, Col {}", line + 1, column + 1))
+                            .width(FillPortion(1))
+                            .size(16)
+                            .align_x(Alignment::End)
+                    };
+                    row![status, position]
+                };
 
-        container(row![tree_area, column![editor_container, status_bar]])
+                pane_grid::Content::new(column![editor_container, status_bar].height(Fill))
+            }
+        })
+        .spacing(6)
+        .min_size(140)
+        .on_resize(12, Message::PaneResized);
+
+        let border = border.clone();
+        container(grid)
             .padding(10)
             .center(Fill)
             .style(move |_theme| container::Style {
