@@ -10,7 +10,7 @@ homepage = "https://github.com/santoshxshrestha/xeditor"
 repository = "https://github.com/santoshxshrestha/xeditor"
 readme = "README.md"
 keywords = ["text-editors", "gui", "rust", "iced"]
-categories = ["development-tools", "editors"]
+categories = ["development-tools"]
 exclude = [
     ".github/",
 ]
