@@ -2,6 +2,18 @@
 name = "xeditor"
 version = "0.1.0"
 edition = "2024"
+authors = ["Santosh Shrestha <santoshxshrestha@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "A small GUI text editor built with Rust + Iced."
+documentation = "https://docs.rs/xeditor"
+homepage = "https://github.com/santoshxshrestha/xeditor"
+repository = "https://github.com/santoshxshrestha/xeditor"
+readme = "README.md"
+keywords = ["text-editor", "gui", "rust", "iced"]
+categories = ["development-tools", "editors"]
+exclude = [
+    ".github/",
+]
 
 [dependencies]
 iced = { version = "0.14.0", features = ["highlighter", "tokio"] }
