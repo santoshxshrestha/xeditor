@@ -280,7 +280,11 @@ impl Xeditor {
                             Some(text_editor::Binding::Custom(Message::SaveFile))
                         }
                         keyboard::Key::Character("o") if key_press.modifiers.command() => {
-                            Some(text_editor::Binding::Custom(Message::OpenFile))
+                            if key_press.modifiers.shift() {
+                                Some(text_editor::Binding::Custom(Message::OpenDirectory))
+                            } else {
+                                Some(text_editor::Binding::Custom(Message::OpenFile))
+                            }
                         }
                         keyboard::Key::Character("n") if key_press.modifiers.command() => {
                             Some(text_editor::Binding::Custom(Message::NewFile))
