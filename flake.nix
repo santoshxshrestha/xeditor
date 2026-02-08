@@ -42,6 +42,7 @@
           pkgs.openssl
           pkgs.cargo-watch
           pkgs.rust-analyzer
+          pkgs.zenity
         ];
         nativeBuildInputs = [ pkgs.pkg-config ];
 
