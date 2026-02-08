@@ -242,7 +242,7 @@ impl Xeditor {
                 tree_column = tree_column.spacing(4);
                 tree_column = tree_column.extend(render_tree_nodes(&self.tree_content, 0));
 
-                let border = border.clone();
+                let border = border;
                 let tree_area = container(column![tree_column])
                     .width(Fill)
                     .padding(10)
@@ -321,7 +321,7 @@ impl Xeditor {
         .min_size(140)
         .on_resize(12, Message::PaneResized);
 
-        let border = border.clone();
+        let border = border;
         container(grid)
             .padding(10)
             .center(Fill)
@@ -426,11 +426,10 @@ fn render_tree_nodes<'a>(nodes: &'a [FileNode], depth: usize) -> Vec<Element<'a,
                     .into(),
                 );
 
-                if *expanded {
-                    if let Some(children) = children_nodes.as_deref() {
+                if *expanded
+                    && let Some(children) = children_nodes.as_deref() {
                         out.extend(render_tree_nodes(children, depth + 1));
                     }
-                }
             }
         }
     }
@@ -463,11 +462,10 @@ fn toggle_dir_expanded(nodes: &mut [FileNode], target: &PathBuf) -> bool {
                 return false;
             }
 
-            if let Some(children) = children_nodes.as_deref_mut() {
-                if toggle_dir_expanded(children, target) {
+            if let Some(children) = children_nodes.as_deref_mut()
+                && toggle_dir_expanded(children, target) {
                     return true;
                 }
-            }
         }
     }
 
@@ -492,15 +490,14 @@ fn set_dir_children_inner(
         } = node
         {
             if path == target {
-                *children_nodes = Box::new(children.take());
+                **children_nodes = children.take();
                 return true;
             }
 
-            if let Some(existing) = children_nodes.as_deref_mut() {
-                if set_dir_children_inner(existing, target, children) {
+            if let Some(existing) = children_nodes.as_deref_mut()
+                && set_dir_children_inner(existing, target, children) {
                     return true;
                 }
-            }
         }
     }
 
