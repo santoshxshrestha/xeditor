@@ -242,7 +242,6 @@ impl Xeditor {
                 tree_column = tree_column.spacing(4);
                 tree_column = tree_column.extend(render_tree_nodes(&self.tree_content, 0));
 
-                let border = border;
                 let tree_area = container(column![tree_column])
                     .width(Fill)
                     .padding(10)
@@ -321,7 +320,6 @@ impl Xeditor {
         .min_size(140)
         .on_resize(12, Message::PaneResized);
 
-        let border = border;
         container(grid)
             .padding(10)
             .center(Fill)
@@ -345,6 +343,7 @@ fn icon<'a>(codepoint: char) -> Element<'a, Message> {
     text(codepoint).font(ICON_FONTS).into()
 }
 
+#[allow(dead_code)]
 fn directory_icon<'a>() -> Element<'a, Message> {
     icon('\u{E001}')
 }
@@ -426,10 +425,9 @@ fn render_tree_nodes<'a>(nodes: &'a [FileNode], depth: usize) -> Vec<Element<'a,
                     .into(),
                 );
 
-                if *expanded
-                    && let Some(children) = children_nodes.as_deref() {
-                        out.extend(render_tree_nodes(children, depth + 1));
-                    }
+                if *expanded && let Some(children) = children_nodes.as_deref() {
+                    out.extend(render_tree_nodes(children, depth + 1));
+                }
             }
         }
     }
@@ -463,9 +461,10 @@ fn toggle_dir_expanded(nodes: &mut [FileNode], target: &PathBuf) -> bool {
             }
 
             if let Some(children) = children_nodes.as_deref_mut()
-                && toggle_dir_expanded(children, target) {
-                    return true;
-                }
+                && toggle_dir_expanded(children, target)
+            {
+                return true;
+            }
         }
     }
 
@@ -495,9 +494,10 @@ fn set_dir_children_inner(
             }
 
             if let Some(existing) = children_nodes.as_deref_mut()
-                && set_dir_children_inner(existing, target, children) {
-                    return true;
-                }
+                && set_dir_children_inner(existing, target, children)
+            {
+                return true;
+            }
         }
     }
 
