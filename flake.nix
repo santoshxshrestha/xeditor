@@ -13,7 +13,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
       naerskLib = pkgs.callPackage naersk { };
 
-      runtimedeps = [
+      libPath = pkgs.lib.makeLibraryPath [
         pkgs.libxkbcommon
 
         # GPU backend
@@ -44,9 +44,11 @@
           pkgs.rust-analyzer
           pkgs.zenity
         ];
-        nativeBuildInputs = [ pkgs.pkg-config ];
 
-        env.RUSTFLAGS = "-C link-arg=-Wl,-rpath,${nixpkgs.lib.makeLibraryPath runtimedeps}";
+        RUST_LOG = "debug";
+        nativeBuildInputs = [ pkgs.pkg-config ];
+        LD_LIBRARY_PATH = libPath;
+
       };
       formatter = pkgs.rustfmt;
     };
