@@ -74,6 +74,14 @@ enum Message {
     SavedFile(Result<PathBuf, Error>),
 }
 
+const PLACEHOLDER_TEXT: &str = "Type something,
+
+Shortcuts:
+  Ctrl+S         Save
+  Ctrl+O         Open file
+  Ctrl+Shift+O   Open directory
+  Ctrl+N         New file";
+
 impl Xeditor {
     fn new() -> (Self, Task<Message>) {
         let (mut panes, explorer) = pane_grid::State::new(PaneKind::Explorer);
@@ -263,7 +271,7 @@ impl Xeditor {
             }
             PaneKind::Editor => {
                 let editor_area = text_editor(&self.content)
-                    .placeholder("Type some thing bruth")
+                    .placeholder(PLACEHOLDER_TEXT)
                     .height(Fill)
                     .on_action(Message::ActionPerformed)
                     .highlight(
