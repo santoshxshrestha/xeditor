@@ -1,4 +1,3 @@
-
 use iced::Alignment;
 use iced::Border;
 use iced::Color;
@@ -248,6 +247,7 @@ impl Xeditor {
                     .width(Fill)
                     .padding(10)
                     .height(Fill)
+                    .clip(true)
                     .style(move |_theme| container::Style {
                         text_color: Some(Color::WHITE),
                         background: Some(Theme::CatppuccinMocha.base().background_color.into()),
