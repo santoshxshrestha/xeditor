@@ -9,7 +9,7 @@ documentation = "https://docs.rs/xeditor"
 homepage = "https://github.com/santoshxshrestha/xeditor"
 repository = "https://github.com/santoshxshrestha/xeditor"
 readme = "README.md"
-keywords = ["text-editor", "gui", "rust", "iced"]
+keywords = ["text-editors", "gui", "rust", "iced"]
 categories = ["development-tools", "editors"]
 exclude = [
     ".github/",
