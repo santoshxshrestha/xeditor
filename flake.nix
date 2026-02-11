@@ -48,7 +48,10 @@
         RUST_LOG = "debug";
         nativeBuildInputs = [ pkgs.pkg-config ];
         LD_LIBRARY_PATH = libPath;
-
+        postInstall = ''
+          mkdir -p $out/share/applications
+          cp assets/your-app.desktop $out/share/applications/
+        '';
       };
       formatter = pkgs.rustfmt;
     };
