@@ -30,8 +30,25 @@
     {
       packages.${system}.default = naerskLib.buildPackage {
         src = ./.;
-        buildInputs = [ pkgs.openssl ];
-        nativeBuildInputs = [ pkgs.pkg-config ];
+        buildInputs = [
+          pkgs.openssl
+
+          pkgs.libxkbcommon
+
+          # GPU backend
+          pkgs.vulkan-loader
+          pkgs.libGL
+
+          # Window system
+          pkgs.wayland
+          pkgs.xorg.libX11
+          pkgs.xorg.libXcursor
+          pkgs.xorg.libXi
+        ];
+        nativeBuildInputs = [
+          pkgs.pkg-config
+
+        ];
       };
       devShells.${system}.default = pkgs.mkShell {
         packages = [
