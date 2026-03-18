@@ -15,27 +15,29 @@
 
       dlopenLibraries = [
         pkgs.libxkbcommon
-
-        # GPU backend
         pkgs.vulkan-loader
         pkgs.libGL
-
-        # Window system
         pkgs.wayland
-        # pkgs.xorg.libX11
-        # pkgs.xorg.libXcursor
-        # pkgs.xorg.libXi
       ];
+
+      xeditor = naerskLib.buildPackage {
+        src = ./.;
+        nativeBuildInputs = [ pkgs.pkg-config ];
+        buildInputs = dlopenLibraries;
+      };
     in
     {
-      packages.${system}.default = naerskLib.buildPackage {
-        src = ./.;
-        nativeBuildInputs = [
-          pkgs.pkg-config
-        ];
+      packages.${system}.default = pkgs.symlinkJoin {
+        name = "xeditor";
+        paths = [ xeditor ];
+        buildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram $out/bin/xeditor \
+            --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath dlopenLibraries}"
+        '';
       };
+
       devShells.${system}.default = pkgs.mkShell {
-        # development tools for editing, testing and watching
         packages = [
           pkgs.rustc
           pkgs.cargo
@@ -46,16 +48,11 @@
           pkgs.rust-analyzer
           pkgs.zenity
         ];
-
         RUST_LOG = "debug";
         nativeBuildInputs = [ pkgs.pkg-config ];
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath dlopenLibraries;
-        postInstall = ''
-          mkdir -p $out/share/applications
-          cp assets/your-app.desktop $out/share/applications/
-        '';
-        # env.RUSTFLAGS = "-C link-arg=-Wl,-rpath,${nixpkgs.lib.makeLibraryPath dlopenLibraries}";
       };
+
       formatter = pkgs.rustfmt;
     };
 }
