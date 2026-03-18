@@ -13,7 +13,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
       naerskLib = pkgs.callPackage naersk { };
 
-      runtimeDeps = [
+      dlopenLibraries = [
         pkgs.libxkbcommon
 
         # GPU backend
@@ -22,19 +22,16 @@
 
         # Window system
         pkgs.wayland
-        pkgs.xorg.libX11
-        pkgs.xorg.libXcursor
-        pkgs.xorg.libXi
+        # pkgs.xorg.libX11
+        # pkgs.xorg.libXcursor
+        # pkgs.xorg.libXi
       ];
     in
     {
       packages.${system}.default = naerskLib.buildPackage {
         src = ./.;
-        # runtime libraries
-        buildInputs = [ pkgs.openssl ] ++ runtimeDeps;
         nativeBuildInputs = [
           pkgs.pkg-config
-
         ];
       };
       devShells.${system}.default = pkgs.mkShell {
@@ -52,11 +49,12 @@
 
         RUST_LOG = "debug";
         nativeBuildInputs = [ pkgs.pkg-config ];
-        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath runtimeDeps;
+        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath dlopenLibraries;
         postInstall = ''
           mkdir -p $out/share/applications
           cp assets/your-app.desktop $out/share/applications/
         '';
+        # env.RUSTFLAGS = "-C link-arg=-Wl,-rpath,${nixpkgs.lib.makeLibraryPath dlopenLibraries}";
       };
       formatter = pkgs.rustfmt;
     };
